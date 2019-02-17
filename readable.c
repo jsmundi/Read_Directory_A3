@@ -23,50 +23,39 @@
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 
+
 #define MAXPATH 4096
 #define MAXNAME 255
+#define ISFILE 4
+#define ISDIR 8
+#define ISSYMBOLIC 10
 
 void traverseDir(char *entryPath)
 {
+    char path[MAXPATH]; 
+    struct dirent *dp; 
     DIR *dir;
-    dir = opendir(entryPath);
 
+    dir = opendir(entryPath);
     if (dir == NULL)
     {
-        fprintf(stderr, "Error: %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        return;
     }
-    while (1)
+
+    while ((dp = readdir(dir)) != NULL)
     {
-        struct dirent *entry;
-        char *name;
-        entry = readdir(dir);
-        if (!entry)
-            break;
-        name = entry->d_name;
-
-        //Skip Symbolic Links
-        if (entry->d_type == 10)
+        if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0)
         {
-            continue;
-        }
-        if ((strcmp(name, ".") == 0) || (strcmp(name, "..") == 0))
-            continue;
+            printf("%s/%s\n", entryPath, dp->d_name);
 
-        if (entry->d_type == 8)
-            printf("%s/%s\n", entryPath, name);
-        else if (entry->d_type == 4)
-        {
-            printf("%s/%s/\n", entryPath, name);
+            strcpy(path, entryPath);
+            strcat(path, "/");
+            strcat(path, dp->d_name);
 
-            char *oldPath = strdup(entryPath);
-            char *newPath = entryPath;
-            strcat(newPath, "/");
-            strcat(newPath, name);
-            traverseDir(newPath);
-            entryPath = oldPath;
+            traverseDir(path);
         }
     }
+
     closedir(dir);
 }
 
@@ -104,6 +93,7 @@ int main(int argc, char const *argv[])
 
     assert(rPath != NULL);
 
+    //Traverse the path
     traverseDir(rPath);
 
     return 0;
