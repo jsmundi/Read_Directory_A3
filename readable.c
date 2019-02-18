@@ -11,7 +11,8 @@
  * Last Modified: 02/15/19
  * 
  */
-
+#define _GNU_SOURCE
+#define _BSD_SOURCE
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
