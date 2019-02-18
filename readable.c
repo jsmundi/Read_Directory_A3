@@ -19,44 +19,119 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <dirent.h>
-
-#define EXIT_FAILURE 1
-#define EXIT_SUCCESS 0
-
+#include <limits.h>
+#include <sys/stat.h>
 
 #define MAXPATH 4096
-#define MAXNAME 255
-#define ISFILE 4
-#define ISDIR 8
-#define ISSYMBOLIC 10
 
-void traverseDir(char *entryPath)
+/* 
+ * Validate path for recursion
+ * Check 1: File is a Directory
+ * Check 2: File is not Symbolic
+ * Check 3: Ensure path is not "." or ".."
+ * If all checks passed return 1
+ * Else return 0
+ */
+int dirTest(char *path)
 {
-    char path[MAXPATH]; 
-    struct dirent *dp; 
-    DIR *dir;
 
-    dir = opendir(entryPath);
-    if (dir == NULL)
+    struct stat pathStat;
+
+    if ((lstat(path, &pathStat) == 0) &&
+        S_ISDIR(pathStat.st_mode) &&
+        S_ISDIR(pathStat.st_mode) &&
+        (strcmp(path, ".") != 0) && (strcmp(path, "..") != 0))
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+/* Check if file is regular using lstat and stMode.*/
+int isReg(char *path)
+{
+    struct stat pathStat;
+
+    if ((lstat(path, &pathStat) == 0) && S_ISDIR(pathStat.st_mode))
+    {
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
+/* 
+ * Recursive traversal of the directory path and all sub-directories
+ * Print out absolute path of the readable & regular files and sub-directories
+ */
+void traverseDir(char *pathname)
+{
+    //Directory stream
+    struct dirent *dp;
+
+    //Change the working directory
+    if (chdir(pathname) != 0)
+    {
+        fprintf(stderr, "Error: %s\n", strerror(errno));
+    }
+
+    //Open path
+    DIR *dir = opendir(pathname);
+
+    //If not a directory countinue
+    if (!dir)
     {
         return;
     }
 
+    //Returns pointer to dirent structure, return null when end of directory reached
     while ((dp = readdir(dir)) != NULL)
     {
-        if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0)
+        //Check for Readable access permissions.
+        if ((access(dp->d_name, R_OK)) == -1)
         {
-            printf("%s/%s\n", entryPath, dp->d_name);
+            continue;
+        }
+        //If directory not open error out
+        if (!dir)
+        {
+            fprintf(stderr, "Error: %s\n", strerror(errno));
+        }
 
-            strcpy(path, entryPath);
-            strcat(path, "/");
-            strcat(path, dp->d_name);
+        //Get current working directory
+        if (getcwd(pathname, MAXPATH) == NULL)
+        {
+            fprintf(stderr, "Error: %s\n", strerror(errno));
+        }
 
-            traverseDir(path);
+        //If directory and Not symbolic continue traversal
+        if (dirTest(dp->d_name) == 1)
+        {
+            traverseDir(strcat(strcat(pathname, "/"), dp->d_name));
+        }
+        //If regular file
+        else if (isReg(dp->d_name))
+        {
+            //Print absolute path
+            printf("%s/%s\n", pathname, dp->d_name);
         }
     }
 
-    closedir(dir);
+    if (chdir("..") == -1)
+    {
+        fprintf(stderr, "chdir() Error: %s\n", strerror(errno));
+    }
+
+    //Close directory
+    if (closedir(dir) != 0)
+    {
+        fprintf(stderr, "Error closing directory: %s\n", strerror(errno));
+    }
 }
 
 int main(int argc, char const *argv[])
@@ -81,6 +156,7 @@ int main(int argc, char const *argv[])
             exit(EXIT_FAILURE);
         }
     }
+
     //Path for the current working directory
     else
     {
