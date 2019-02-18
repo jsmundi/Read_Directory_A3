@@ -22,6 +22,7 @@
 #include <dirent.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #define MAXPATH 4096
 
@@ -151,7 +152,7 @@ int main(int argc, char const *argv[])
     //If the user provides path
     if (argc == 2)
     {
-        if (realpath((const char *)argv[1], rPath) == NULL)
+        if (!(realpath((const char *)argv[1], rPath)))
         {
             fprintf(stderr, "Error: %s\n", strerror(errno));
             exit(EXIT_FAILURE);
